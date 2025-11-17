@@ -2,8 +2,8 @@
 
 set -e
 
-IMAGE="tenable/nessus:10.9.4-ubuntu-20250928"
-CONTAINER_NAME="nessus-10.9.4"
+IMAGE="tenable/nessus:latest"
+CONTAINER_NAME="nessus-latest"
 PORT="8834"
 
 install_nessus() {
@@ -34,16 +34,16 @@ menu() {
     echo "1. Install Nessus Docker"
     echo "2. Uninstall / Reset Nessus Docker"
     echo "3. Run nessuslisense.py"
-echo "4. Run GrabLicense"
-echo "0. Exit"
+    echo "4. Run GrabLicenseKey.sh"
+    echo "0. Exit"
     echo -n "Choose an option: "
     read opt
 
     case $opt in
         1) install_nessus ;;
         2) uninstall_nessus ;;
-        3) python3 nessuslisense.py ;;
-        4) python3 GrabLicense ;;
+        3) python3 nessuslicense.py ;;
+        4) bash GrabLicenseKey.sh ;;
         0) exit 0 ;;
         *) echo "Invalid option" ;;
     esac
