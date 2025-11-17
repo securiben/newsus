@@ -10,28 +10,8 @@ chmod +x *.sh
 
 ## 🚀 Usage
 
-### 1. Grab License Key
-
-Extracts or retrieves a Nessus license key.
-
 ```bash
-./GrabLicenseKey.sh
-```
-
-### 2. Activate Nessus License (Python Script)
-
-```bash
-python3 nessuslicense.py
-```
-
-### 3. Nessus Service Helper
-
-Start, stop, or restart Nessus services.
-
-```bash
-./nessus.sh start
-./nessus.sh stop
-./nessus.sh restart
+./nessus.sh
 ```
 
 ## 📁 File Description
