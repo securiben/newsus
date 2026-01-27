@@ -1,9 +1,16 @@
 #!/bin/bash
 set -e
 
-CONTAINER_NAME="nessus-latest"
 PORT="8834"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ---------------------------------------------------------
+# Detect Nessus containers by IMAGE name (robust)
+# ---------------------------------------------------------
+detect_nessus_containers() {
+    docker ps -a --format "{{.ID}} {{.Image}}" | \
+    grep "tenable/nessus" | awk '{print $1}'
+}
 
 # ---------------------------------------------------------
 # Fetch latest Nessus version tag from Docker Hub
@@ -32,29 +39,45 @@ install_nessus() {
     echo "[+] Pulling Nessus image: $IMAGE"
     docker pull "$IMAGE"
 
-    echo "[+] Running Nessus container: $CONTAINER_NAME"
-    docker run --name "$CONTAINER_NAME" -d -p ${PORT}:8834 "$IMAGE"
+    echo "[+] Removing old Nessus containers (if any)..."
+    uninstall_nessus >/dev/null 2>&1 || true
+
+    echo "[+] Running Nessus container..."
+    docker run -d \
+        --name nessus \
+        -p ${PORT}:8834 \
+        "$IMAGE"
 
     echo "[✓] Installation complete."
     echo "[+] Access Nessus at: https://localhost:${PORT}"
 }
 
 # ---------------------------------------------------------
-# Uninstall / Reset Nessus
+# Uninstall Nessus
 # ---------------------------------------------------------
 uninstall_nessus() {
-    echo "[!] Stopping and removing Nessus container..."
-    docker stop "$CONTAINER_NAME" 2>/dev/null || true
-    docker rm "$CONTAINER_NAME" 2>/dev/null || true
+    echo "[!] Searching for Nessus containers..."
 
-    echo "[!] Optional cleanup: removing unused Docker data"
-    docker system prune -f
+    CONTAINERS=$(detect_nessus_containers)
 
-    echo "[✓] Nessus Docker reset completed."
+    if [ -z "$CONTAINERS" ]; then
+        echo "[!] No Nessus containers found."
+        return
+    fi
+
+    for CID in $CONTAINERS; do
+        echo "[!] Stopping container $CID..."
+        docker stop "$CID" 2>/dev/null || true
+
+        echo "[!] Removing container $CID..."
+        docker rm "$CID" 2>/dev/null || true
+    done
+
+    echo "[✓] Nessus containers removed."
 }
 
 # ---------------------------------------------------------
-# Run nessuslicense.py
+# Keygen Nessus
 # ---------------------------------------------------------
 run_license_script() {
     if [ -f "$SCRIPT_DIR/nessuslicense.py" ]; then
@@ -66,15 +89,28 @@ run_license_script() {
 }
 
 # ---------------------------------------------------------
-# Run GrabLicenseKey.sh
+# Renew Nessus
 # ---------------------------------------------------------
-run_grablicense() {
-    if [ -f "$SCRIPT_DIR/GrabLicenseKey.sh" ]; then
-        echo "[+] Running GrabLicenseKey.sh..."
-        bash "$SCRIPT_DIR/GrabLicenseKey.sh"
-    else
-        echo "[!] GrabLicenseKey.sh not found!"
+renew_license() {
+    CID=$(detect_nessus_containers | head -n1)
+
+    if [ -z "$CID" ]; then
+        echo "[!] Nessus container is not running!"
+        return
     fi
+
+    echo -n "Enter new Nessus License: "
+    read LICENSE
+
+    if [ -z "$LICENSE" ]; then
+        echo "[!] License cannot be empty!"
+        return
+    fi
+
+    echo "[+] Registering license inside container $CID ..."
+    docker exec -it "$CID" /opt/nessus/sbin/nessuscli fetch --register "$LICENSE"
+
+    echo "[✓] License registration executed."
 }
 
 # ---------------------------------------------------------
@@ -85,9 +121,9 @@ menu() {
     echo "     Nessus Docker Manager"
     echo "=============================="
     echo "1. Install Nessus (Latest Version)"
-    echo "2. Uninstall / Reset Nessus"
-    echo "3. Run nessuslicense.py"
-    echo "4. Run GrabLicenseKey.sh"
+    echo "2. Uninstall Nessus"
+    echo "3. Keygen Nessus"
+    echo "4. Renew Nessus"
     echo "0. Exit"
     echo -n "Choose an option: "
     read opt
@@ -96,9 +132,9 @@ menu() {
         1) install_nessus ;;
         2) uninstall_nessus ;;
         3) run_license_script ;;
-        4) run_grablicense ;;
+        4) renew_license ;;
         0) exit 0 ;;
-        *) echo "[!] Invalid option";;
+        *) echo "[!] Invalid option" ;;
     esac
 }
 
