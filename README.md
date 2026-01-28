@@ -16,7 +16,6 @@ chmod +x *.sh
 
 ## 📁 File Description
 
-* **GrabLicenseKey.sh** — Shell script to retrieve or parse license keys.
 * **nessuslicense.py** — Python-based license activation helper.
 * **nessus.sh** — Simple Nessus service management tool.
 
